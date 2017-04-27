@@ -1,13 +1,35 @@
 from player import Player
 import random
-def checkInput(inputprompt, allowed, errormsg):
+
+def checkInput(prompt, type_=None, min_=None, max_=None, range_=None):
+    if min_ is not None and max_ is not None and max_ < min_:
+        raise ValueError("min_ must be less than or equal to max_.")
     while True:
-        input_ = int(input(str(inputprompt)))
-        if input_ in allowed:
-            return input_
-            break
+        ui = input(prompt)
+        if type_ is not None:
+            try:
+                ui = type_(ui)
+            except ValueError:
+                print("Input type must be {0}.".format(type_.__name__))
+                continue
+        if max_ is not None and ui > max_:
+            print("Input must be less than or equal to {0}.".format(max_))
+        elif min_ is not None and ui < min_:
+            print("Input must be greater than or equal to {0}.".format(min_))
+        elif range_ is not None and ui not in range_:
+            if isinstance(range_, range):
+                template = "Input must be between {0.start} and {0.stop}."
+                print(template.format(range_))
+            else:
+                template = "Input must be {0}."
+                if len(range_) == 1:
+                    print(template.format(*range_))
+                else:
+                    print(template.format(" or ".join((", ".join(map(str,
+                                                                     range_[:-1])),
+                                                       str(range_[-1])))))
         else:
-            print(str(errormsg)+"\n")
+            return ui
 
 
 class Enemy:
@@ -26,8 +48,7 @@ class Enemy:
 
 class Human(Player):
     def __init__(self, world, wep, name, stn, agi, inc, luck, ten, description1, description2):
-        Player.__init__(self, world, wep, stn, agi, inc, luck, ten)
-        self.isPlayer = False
+        Player.__init__(self, world, stn, agi, inc, luck, ten, startInv=None)
         self.name = name
         self.abilities = [["Kick", True, 1, 0, 2], ["Dodge", False, 1]]
         self.equipped = wep
@@ -39,15 +60,6 @@ class Human(Player):
         # the player to have a choice in what other humans decide to do, so getattacks() now just chooses a random ability
         # from the ability list. Similarly, instead of giving the player a prompt when equipping, equip now takes as input
         # the weapon to equip, and equips it durint initialization. Everything else is pretty much the same (so far). 
-
-    def damageEnemy(self):
-        if self.world.p.dodging:
-            print("You have dodged the attack.")
-            self.world.p.dodging = False
-        else:
-            self.world.p.health -= self.damage
-            print("You have taken "+str(self.damage)+" damage.")
-            print("Your health: "+str(self.world.p.health)+ " HP.")
 
     def equip(self, weapon):
         for ability in weapon.abilities:
@@ -80,4 +92,34 @@ class Human(Player):
             self.getattacks()
         else:
             print(str(self.name)+" is preparing to use "+str(self.abilities[self.ability][0]+" in "+str(self.attackturn-self.world.turn)+"."+"\n"))
+
+    def loot(self):
+        droplist = []
+        droplist.append([self.equipped.itemname, self.equipped])
+        droplist.append(["Coins", int(random.randrange(0,30))])
+        specialdrop = random.randrange(0,100)+10
+        if self.world.p.luck >= specialdrop:
+            droplist.append(random.choice[[serum.itemname, serum], [salve.itemname, salve], [luckrock.itemname, luckrock]])
+        while True:
+            for item in droplist:
+                if item[0] == "Coins":
+                    print(str(droplist.index(item))+": "+str(item[1])+" coins.")
+                else:
+                    print(str(droplist.index(item))+": "+str(item[0]))
+            print(str(len(droplist))+": Leave.")
+            take = checkInput("Take an item? ", type_=int, min_=0, max_=len(droplist))
+            if take < len(droplist):
+                if droplist[take][0] != "Coins":
+                    self.world.p.pickup(droplist[take][1])
+                    print("You have taken "+str(droplist[take][0]+"."+"\n"))
+                    droplist.remove(droplist[take])
+                    continue
+                else:
+                    self.world.p.money += droplist[take][1]
+                    print(str(droplist[take][1])+" coins added."+"\n")
+                    droplist.remove(droplist[take])
+                    continue
+            elif take == len(droplist):
+                break
+
     
