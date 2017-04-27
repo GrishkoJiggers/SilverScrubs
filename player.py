@@ -1,18 +1,40 @@
 import random
-def checkInput(inputprompt, allowed, errormsg):
+
+def checkInput(prompt, type_=None, min_=None, max_=None, range_=None):
+    if min_ is not None and max_ is not None and max_ < min_:
+        raise ValueError("min_ must be less than or equal to max_.")
     while True:
-        input_ = int(input(str(inputprompt)))
-        if input_ in allowed:
-            return input_
-            break
+        ui = input(prompt)
+        if type_ is not None:
+            try:
+                ui = type_(ui)
+            except ValueError:
+                print("Input type must be {0}.".format(type_.__name__))
+                continue
+        if max_ is not None and ui > max_:
+            print("Input must be less than or equal to {0}.".format(max_))
+        elif min_ is not None and ui < min_:
+            print("Input must be greater than or equal to {0}.".format(min_))
+        elif range_ is not None and ui not in range_:
+            if isinstance(range_, range):
+                template = "Input must be between {0.start} and {0.stop}."
+                print(template.format(range_))
+            else:
+                template = "Input must be {0}."
+                if len(range_) == 1:
+                    print(template.format(*range_))
+                else:
+                    print(template.format(" or ".join((", ".join(map(str,
+                                                                     range_[:-1])),
+                                                       str(range_[-1])))))
         else:
-            print(str(errormsg)+"\n")
+            return ui
 
 class Player:
-    def __init__(self, world, wep, stn, agi, inc, luck, ten):
-        self.isPlayer = True
-        self.inv = {wep.itemname:wep}
-        self.startWep = wep
+    def __init__(self, world, stn, agi, inc, luck, ten, startInv):
+        self.isAlive = True
+        self.inv = startInv
+        self.money = 30
         self.stn = stn
         self.agi = agi
         self.inc = inc
@@ -23,7 +45,7 @@ class Player:
         self.health = int(self.ten*20)
         self.critChance = int(100/self.luck)
         self.world = world
-        self.equipped = self.startWep
+        self.equipped = None
         self.attacking = False
         self.critical = False
         self.attackturn = None
@@ -31,8 +53,8 @@ class Player:
         self.ability = None
         self.dodging = False
         self.currentaction = "Nothing"
-        self.abilities = [["Kick", True, 1, 2, 3], ["Dodge", False, 1], ["Observe", False, 1]]
-        self.autoEquip()
+        self.abilities = [["Kick", True, 1, 2, 3], ["Dodge", False, 1], ["Observe", False, 1], ["Switch weapon", False, 1]]
+        self.equipQueue = None
         
         # Wepabilities is a list that belongs to the player, which defines abilities depending on equipped weapon.
         # Every item in the ability list corresponds to name, whether it is a damaging ability, min damage, max damage if it is, and turn cost. ORDER MUST BE THE SAME FOR EVERY ENTRY.
@@ -56,58 +78,9 @@ class Player:
         self.limbs = [self.Luparm, self.Ruparm, self.Llowarm, self.Rlowarm, self.head, self.upbody, self.lowbody, self.Rleg, self.Lleg]
         self.targetlimb = None
         self.coords = [0, 5]
+        self.proximity = [[0,4], [0,6], [1,4], [1,5],[1,6]]
         self.bearings = []
         
-
-        
-
-    def getBearings(self):
-        self.bearings = ["W","SW","S","SE","E","NE","N","NW"]
-        if self.coords[1] == 0:
-            self.bearings.remove("SW")
-            self.bearings.remove("NW")
-            self.bearings.remove("W")
-        if self.coords[1] == 10:
-            self.bearings.remove("SE")
-            self.bearings.remove("NE")
-            self.bearings.remove("E")
-        if self.coords[0] == 0:
-            self.bearings.remove("N")
-            self.bearings.remove("NE")
-            self.bearings.remove("NW")
-        if self.coords[0] == 9:
-            self.bearings.remove("SW")
-            self.bearings.remove("SE")
-        for direction in self.bearings:
-            print(str(self.bearings.index(direction))+": "+ str(direction))
-
-    # Every time getBearings() is called, it makes the list of all possible directions, then narrows it down based on where you are. If you're in the last row,
-    # you can still go south, thus progressing to the next region.
-
-    def move(self):
-        self.getBearings()
-        go = checkInput("Choose your bearings: "+"\n", list(range(0,len(self.bearings))), "Invalid direction. Choose a number corresponding to a direction: "+"\n")
-        direction = self.bearings[go]
-        if direction == "W":
-            self.coords[1] -= 1
-        elif direction == "SW":
-            self.coords[0] += 1
-            self.coords[1] -= 1
-        elif direction == "S":
-            self.coords[0] += 1
-        elif direction == "SE":
-            self.coords[0] += 1
-            self.coords[1] += 1
-        elif direction == "E":
-            self.coords[1] += 1
-        elif direction == "NE":
-            self.coords[0] -= 1
-            self.coords[1] += 1
-        elif direction == "N":
-            self.coords[0] -= 1
-        elif direction == "NW":
-            self.coords[0] -= 1
-            self.coords[1] -= 1
 
 
 
@@ -118,49 +91,134 @@ class Player:
     def pickup(self, itemObject):
         self.inv[itemObject.itemname] = itemObject
    
-    def drop(self, itemObject):
-        del self.inv[itemObject]
-        # Note: I may change this to pop later so that things can be dropped into their surroundings, instead of being removed completely
 
     def inventory(self):   
-        self.invlist=[]
-        for item in self.inv:
-            self.invlist.append(item)
-            print(str(self.invlist.index(item))+": "+str(item))
-        use = checkInput("Use an item? "+"\n", list(range(0,len(self.inv))), "No such item. Choose a number to use an item: "+"\n")
+        invlist=[]
+        actionlist = []
+        for obj in self.inv:
+            invlist.append(obj)
+            if self.inv[obj] == self.equipped:
+                print(str(invlist.index(obj))+": "+str(obj)+" (Equipped)")
+            else:
+                print(str(invlist.index(obj))+": "+str(obj))
+        use = checkInput("Select an item: ", type_=int, min_=0, max_=len(invlist)-1)
+        chosenitem = invlist[use]
+        realitem = self.inv[chosenitem]
+        # Chosenitem is the string corresponding to an item that you choose from the inventory LIST. This string corresponds to an item object
+        # only when referenced in the self.inv dictionary, hence "realitem," which is just the dictionary value of the list placeholder.
 
+        if realitem.itemtype == "Weapon":
+            actionlist = [[self.equip, "Equip"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+            if realitem == self.equipped:
+                actionlist.append([self.dequip, "Unequip"])
+        elif realitem.itemtype == "Consumable":
+            actionlist = [[self.use, "Use"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+        else:
+            actionlist = [[self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+            # actionlist describes what you can do with the item you've selected. The functions in these pairs correspond to the actual method
+            # that is called when the player chooses something.
+
+        for action in actionlist:
+            print(str(actionlist.index(action))+" : "+action[1])
+        itemaction = checkInput("What would you like to do with "+str(realitem.itemname)+"? ",type_=int, min_=0, max_=len(actionlist)-1)
+        if actionlist[itemaction][1] == "Back":
+            return None
+            # Essentially, if the player selects "back," inventory will return None, returning to the main loop. The "placeholder" string is
+            # Just there to make sure the index for "Back" remains [1].
+        else:
+            actionlist[itemaction][0](realitem)
+            # If the player does not select back, then the function corresponding to what the player chose (defined below) will be applied to the item in question.
+
+
+    def examine(self, itemObject):
+        print(itemObject.description)
+        # Prints the description of whatever item is examined. 
+
+    def use(self, itemObject):
+        if itemObject.type_ == "Healing":
+            self.health += itemObject.heal
+            print("You have healed for "+str(itemObject.heal)+" health."+"\n")
+            if self.health > int(self.ten*20):
+                self.health = int(self.ten*20)
+            # Ensures the player can only heal to max HP.
+
+        elif itemObject.type_ == "Stat":
+            if itemObject.stat == "Strength":
+                self.stn += itemObject.statnum
+            elif itemObject.stat == "Agility":
+                self.agi += itemObject.statnum
+            elif itemObject.stat == "Intelligence":
+                self.inc += itemObject.statnum
+            elif itemObject.stat == "Luck":
+                self.luck += itemObject.statnum
+            elif itemObject.stat == "Tenacity":
+                self.ten += itemObject.statnum
+            print("Your "+itemObject.stat+" has increased by "+str(itemObject.statnum)+"!")
+        del self.inv[itemObject.itemname]
+        # Checks the type of consumable that has been used. If the item is a "Healing" type item, it will heal the player for however much health is specified.
+        # If it is a "Stat" item, it will increase a certain stat by a certain amount (statnum)
+
+
+
+    def equip(self, weapon):
+        if self.equipped == None:
+            for ability in weapon.abilities:
+                self.abilities.append(ability)
+            self.equipped = weapon
+        else:
+            for ability in self.equipped.abilities:
+                self.abilities.remove(ability)
+            print("You have unequipped "+str(self.equipped.itemname)+".")
+            for ability in weapon.abilities:
+                self.abilities.append(ability)
+            self.equipped = weapon
+        print("You have equipped "+str(weapon.itemname)+"."+"\n")
+        # When an item is equipped, it sets that item to the self.equipped attribute, and systematically adds its abilities to the player's combat abilities. If another
+        # item is equipped when the player equips an item, it unequips that item first.
+
+    def drop(self, itemObject):
+        if itemObject == self.equipped:
+            self.dequip(itemObject)
+        del self.inv[itemObject.itemname]
+        print("You have dropped "+str(itemObject.itemname)+".")
+        # If you drop an item, it is removed from the player's inventory. If that item is equipped, it is unequipped first.
 
     def act(self):
         while True:
-            actions = [[self.move, "Travel"], [self.inventory, "Inventory"]]
+            actions = [[self.inventory, "Inventory"]]
             for action in actions:
                 print(str(actions.index(action))+": "+str(action[1]))
-            do = checkInput("What will you do? "+"\n", list(range(0,len(actions))),"You cannot do that. Choose a number corresponding to an action: "+"\n")
+            do = checkInput("What will you do? "+"\n", type_=int, min_=0, max_=len(actions)-1)
             actions[do][0]()
             if actions[do][1] == "Travel":
                 break
-    # Note: add more inventory options. Allow equipping from inventory instead of using the equip function, or allow it to be used within the inventory menu.
-    # Also have individual numbers that correspond to items. If the item's number is pressed, give options on what can be done with them (i.e. drop, examine, use)
+ 
 
-    def autoEquip(self):
-        for item in self.equipped.abilities:
-            self.abilities.append(item)
-
-    def equip(self):
-        invlist = self.inventory()
-        print("Your inventory: "+str(invlist))
-        if self.equipped == None:
-            self.equipped = self.inv[str(input("Choose an item to equip: "))]
-            for item in self.equipped.abilities:
-                self.abilities.append(item)
-
-
-    def dequip(self):
+    def dequip(self, itemObject):
         for item in self.equipped.abilities:
             self.abilities.remove(item)
         self.equipped = None
 
     
+    # COMBAT METHODS
+    ######################################################################################################################################################################################################
+    # As shown in the world object, combat is turn based. Assuming the player is not in the middle of attacking, the player will be given a number of options depending on available abilities.
+
+    def swap(self):
+        weplist = []
+        for obj in self.inv:
+            if self.inv[obj].itemtype == "Weapon" and self.inv[obj] != self.equipped:
+                weplist.append(obj)
+                print(str(weplist.index(obj))+": "+str(obj))
+        if len(weplist) == 0:
+                print("You have no other weapons."+"\n")
+                self.getattacks()
+        else:
+            switch = checkInput("Select a weapon to equip: ", type_=int, min_=0, max_=len(weplist)-1)
+            self.equipQueue = self.inv[weplist[switch]]
+            print("You begin to switch weapons."+"\n")
+        # For switching weapons in combat. 
+
     def getattacks(self):
     
         for item in self.abilities:
@@ -169,33 +227,48 @@ class Player:
             elif item[1] == False:
                 print(str(self.abilities.index(item))+": "+str(item[0])+": "+str(item[2])+" turns.")
         # Above displays the available abilities, giving numbers to press for each one.
-        self.ability = checkInput("Choose an ability: "+"\n", list(range(0,len(self.abilities))), "No such ability. Choose a number corresponding to an ability: "+"\n") 
+
+        self.ability = checkInput("Choose an ability: "+"\n", type_=int, min_=0, max_=len(self.abilities)-1) 
         if self.abilities[self.ability][1]:
             for limb in self.world.currenemy.limbs:
                 print(str(self.world.currenemy.limbs.index(limb))+": "+str(limb[0])+": "+str(limb[1])+" HP.")
-            self.targetlimb = checkInput("Where to attack: "+"\n", list(range(0,len(self.world.currenemy.limbs))), "No such location. Choose a number to target a location: "+"\n")
-
+            self.targetlimb = checkInput("Where to attack: "+"\n", type_=int, min_=0, max_=len(self.world.currenemy.limbs)-1)
+        # The ability is checked for the "damaging" attribute, where 1 means that the ability is an attack, and then prompts the player to choose where to direct the attack.
 
         if self.abilities[self.ability][0] == "Observe":
             print("You closely examine the enemy..."+"\n")
+        # If the player chooses to observe, then it will tell this to the player, and when it's the player's attack turn, a description will be given.
+
+        elif self.abilities[self.ability][0] == "Switch weapon":
+            self.swap()
+            
+
         elif self.abilities[self.ability][0] != "Dodge":
             print("You prepare to "+self.abilities[self.ability][0]+"."+"\n")
+        # With the exception of dodging, this message is displayed when you use an ability.
+
         else:
             self.dodging = True
             print("You prepare to dodge any oncoming attack (next turn)"+"\n")
+        # If the player is in a dodging state, then this message is displayed to indicate that they will dodge next turn's attack.
+
         self.attackturn = self.world.turn + self.abilities[self.ability][2]
         if self.abilities[self.ability][1]:
             crit = random.randrange(0,100)
             if crit < self.critChance:
-                self.damage = int(self.abilities[self.ability][4]*(self.stn/10))*2
+                self.damage = int(self.abilities[self.ability][4]*(self.stn/8))*2
                 self.critical = True
             else:
                 self.damage = int(random.randrange(self.abilities[self.ability][3], self.abilities[self.ability][4])*(self.stn/10))
             self.world.pdamagedealt = True
                 
 
+
     def attack(self):
         self.critical = False
+        if self.equipQueue != None:
+            self.equip(self.equipQueue)
+            self.equipQueue = None
         if self.dodging:
             self.dodging = False
             # In case enemy/player uses dodge last turn when the other was not attacking (essentially making sure "dodging" will last one turn).
@@ -206,27 +279,5 @@ class Player:
             print("You are preparing to use "+str(self.abilities[self.ability][0]+" in "+str(self.attackturn-self.world.turn)+"."+"\n"))
             # Controls what is displayed when it is not the player's turn to attack.
 
-#    def attack(self):
-#        self.getattacks()
-#        self.attackturn = self.world.turn + self.abilities[self.ability][2]
 
-    def damageEnemy(self):
-        if self.world.currenemy.dodging:
-            print(str(self.world.currenemy.name)+" has dodged your attack."+"\n")
-            self.world.currenemy.dodging = False
-        else:
-            self.world.currenemy.health -= self.damage
-            print(str(self.world.currenemy.name)+" has taken "+str(self.damage)+" damage."+"\n")
-            print(str(self.world.currenemy.name)+": "+str(self.world.currenemy.health)+ " HP."+"\n")
 
-    def damaged(self, locname, loch, locq, damage):
-        loch -= damage
-        self.health -= locq*damage
-        if loch < 66:
-            print("Your "+str(locname)+" has been injured.")
-        elif loch < 33:
-            print("Your "+str(locname)+" has been crippled.")
-        elif loch <= 0:
-            if locname != "Upper body" and locname != "Lower body":
-                if self.world.fighting:
-                    print("Your "+str(locname)+" has been severed!")
