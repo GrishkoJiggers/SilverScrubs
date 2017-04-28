@@ -40,6 +40,10 @@ class Player:
         self.inc = inc
         self.luck = luck
         self.ten = ten
+        self.armor = [None, None, None, None]
+        # Here, entries in the list correspond to armor objects. Where they are located in the list matters. Upon equipping, pieces of armor are put
+        # in the correct slot based on the number that corresponds to slot in the armor item.
+
         self.dodgeChance = (self.agi/10)*100//1
         self.hitChance = int((self.inc/20)*100)+65
         self.health = int(self.ten*20)
@@ -55,25 +59,25 @@ class Player:
         self.currentaction = "Nothing"
         self.abilities = [["Kick", True, 1, 2, 3], ["Dodge", False, 1], ["Observe", False, 1], ["Switch weapon", False, 1]]
         self.equipQueue = None
-        
-        # Wepabilities is a list that belongs to the player, which defines abilities depending on equipped weapon.
-        # Every item in the ability list corresponds to name, whether it is a damaging ability, min damage, max damage if it is, and turn cost. ORDER MUST BE THE SAME FOR EVERY ENTRY.
+        self.canequip = True
+        # These are the starting abilities which the player can use regardless of equipped weapon. When a weapon is equipped, its abilities are appended to this list.
+        # When unequipped, those abilities are taken off.
 
-        self.Luparm = ["Left upper arm", int((self.ten/10)*200), 0.85, 0]
-        self.Ruparm = ["Right upper arm", int((self.ten/10)*200), 0.85, 0]
-        self.Llowarm = ["Left lower arm", int((self.ten/10)*200), 0.70, 0]
-        self.Rlowarm = ["Right lower arm", int((self.ten/10)*200), 0.70, 0]
-        self.head = ["Head", int((self.ten/10)*200), 1.50, 0]
-        self.upbody = ["Upper body", int((self.ten/10)*200), 1, 0]
-        self.lowbody = ["Lower body", int((self.ten/10)*200), 1.25, 0]
-        self.Rleg = ["Right leg", int((self.ten/10)*200), 0.85, 0]
-        self.Lleg = ["Left leg", int((self.ten/10)*200), 0.85, 0]
+        self.Luparm = ["Left upper arm", int((self.ten/10)*200), 0.85, 0, 3]
+        self.Ruparm = ["Right upper arm", int((self.ten/10)*200), 0.85, 0, 3]
+        self.Llowarm = ["Left lower arm", int((self.ten/10)*200), 0.70, 0, 3]
+        self.Rlowarm = ["Right lower arm", int((self.ten/10)*200), 0.70, 0, 3]
+        self.head = ["Head", int((self.ten/10)*200), 1.50, 0, 0]
+        self.upbody = ["Upper body", int((self.ten/10)*200), 1, 0, 1]
+        self.lowbody = ["Lower body", int((self.ten/10)*200), 1.25, 0, 1]
+        self.Rleg = ["Right leg", int((self.ten/10)*200), 0.85, 0, 2]
+        self.Lleg = ["Left leg", int((self.ten/10)*200), 0.85, 0, 2]
 
         # These are the players (and generally all humans') limbs. The first item is the name of the body part, the second is the health of that limb (which scales with tenacity), and the third 
         # item is the "quality factor." Basically, when damage is taken to a limb, the damage multiplied by the quality factor is how much the person's total health is reduced by. So, damage taken
         # to the head is 50% more damaging to the player as damage taken to the upper body, for instance. <<WORK IN PROGRESS>> The last item is the condition it the limb: 0 is fine, 1 is weakened, 2 is crippled, and 3
         # is severed. As a limb's condition deteriorates, certain status effects are applied. The head, for example, if weakened, results in intelligence and accuracy loss. Damage to the legs results
-        # in agility loss. Damage to the upper arms affects melee damage. Damage to the lower arms may make you drop your weapon. <<WORK IN PROGRESS>>
+        # in agility loss. Damage to the upper arms affects melee damage. Damage to the lower arms may make you drop your weapon. <<WORK IN PROGRESS>>. The last item in these
 
         self.limbs = [self.Luparm, self.Ruparm, self.Llowarm, self.Rlowarm, self.head, self.upbody, self.lowbody, self.Rleg, self.Lleg]
         self.targetlimb = None
@@ -90,43 +94,48 @@ class Player:
 
     def pickup(self, itemObject):
         self.inv[itemObject.itemname] = itemObject
-   
+    
+
 
     def inventory(self):   
-        invlist=[]
-        actionlist = []
-        for obj in self.inv:
-            invlist.append(obj)
-            if self.inv[obj] == self.equipped:
-                print(str(invlist.index(obj))+": "+str(obj)+" (Equipped)")
+        while True:
+            invlist=[]
+            actionlist = []
+            for obj in self.inv:
+                invlist.append(obj)
+                if self.inv[obj] == self.equipped or self.inv[obj] in self.armor:
+                    print(str(invlist.index(obj))+": "+str(obj)+" (Equipped)")
+                else:
+                    print(str(invlist.index(obj))+": "+str(obj))
+            print(str(len(invlist))+": Back")
+            use = checkInput("Select an item: ", type_=int, min_=0, max_=len(invlist))
+            if use != len(invlist):
+                chosenitem = invlist[use]
             else:
-                print(str(invlist.index(obj))+": "+str(obj))
-        use = checkInput("Select an item: ", type_=int, min_=0, max_=len(invlist)-1)
-        chosenitem = invlist[use]
-        realitem = self.inv[chosenitem]
-        # Chosenitem is the string corresponding to an item that you choose from the inventory LIST. This string corresponds to an item object
-        # only when referenced in the self.inv dictionary, hence "realitem," which is just the dictionary value of the list placeholder.
+                break
+            realitem = self.inv[chosenitem]
+            # Chosenitem is the string corresponding to an item that you choose from the inventory LIST. This string corresponds to an item object
+            # only when referenced in the self.inv dictionary, hence "realitem," which is just the dictionary value of the list placeholder.
+            if realitem.itemtype == "Weapon" or realitem.itemtype == "Armor":
+                actionlist = [[self.equip, "Equip"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+                if realitem == self.equipped:
+                    actionlist.append([self.dequip, "Unequip"])
+            elif realitem.itemtype == "Consumable":
+                actionlist = [[self.use, "Use"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+            else:
+                actionlist = [[self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
+                # actionlist describes what you can do with the item you've selected. The functions in these pairs correspond to the actual method
+                # that is called when the player chooses something.
 
-        if realitem.itemtype == "Weapon":
-            actionlist = [[self.equip, "Equip"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
-            if realitem == self.equipped:
-                actionlist.append([self.dequip, "Unequip"])
-        elif realitem.itemtype == "Consumable":
-            actionlist = [[self.use, "Use"], [self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
-        else:
-            actionlist = [[self.drop, "Drop"], [self.examine, "Examine"], ["Placeholder", "Back"]]
-            # actionlist describes what you can do with the item you've selected. The functions in these pairs correspond to the actual method
-            # that is called when the player chooses something.
-
-        for action in actionlist:
-            print(str(actionlist.index(action))+" : "+action[1])
-        itemaction = checkInput("What would you like to do with "+str(realitem.itemname)+"? ",type_=int, min_=0, max_=len(actionlist)-1)
-        if actionlist[itemaction][1] == "Back":
-            return None
-            # Essentially, if the player selects "back," inventory will return None, returning to the main loop. The "placeholder" string is
-            # Just there to make sure the index for "Back" remains [1].
-        else:
-            actionlist[itemaction][0](realitem)
+            for action in actionlist:
+                print(str(actionlist.index(action))+" : "+action[1])
+            itemaction = checkInput("What would you like to do with "+str(realitem.itemname)+"? ",type_=int, min_=0, max_=len(actionlist)-1)
+            if actionlist[itemaction][1] == "Back":
+                return None
+                # Essentially, if the player selects "back," inventory will return None, returning to the main loop. The "placeholder" string is
+                # Just there to make sure the index for "Back" remains [1].
+            else:
+                actionlist[itemaction][0](realitem)
             # If the player does not select back, then the function corresponding to what the player chose (defined below) will be applied to the item in question.
 
 
@@ -160,19 +169,26 @@ class Player:
 
 
 
-    def equip(self, weapon):
-        if self.equipped == None:
-            for ability in weapon.abilities:
-                self.abilities.append(ability)
-            self.equipped = weapon
-        else:
-            for ability in self.equipped.abilities:
-                self.abilities.remove(ability)
-            print("You have unequipped "+str(self.equipped.itemname)+".")
-            for ability in weapon.abilities:
-                self.abilities.append(ability)
-            self.equipped = weapon
-        print("You have equipped "+str(weapon.itemname)+"."+"\n")
+    def equip(self, itemObject):
+        if itemObject.itemtype == "Weapon":
+            if self.equipped == None:
+                for ability in itemObject.abilities:
+                    self.abilities.append(ability)
+                self.equipped = itemObject
+            else:
+                for ability in self.equipped.abilities:
+                    self.abilities.remove(ability)
+                print("You have unequipped "+str(self.equipped.itemname)+".")
+                for ability in itemObject.abilities:
+                    self.abilities.append(ability)
+                self.equipped = itemObject
+            print("You have equipped "+str(itemObject.itemname)+"."+"\n")
+        elif itemObject.itemtype == "Armor":
+            if self.armor[itemObject.slot] != None:
+                print("You have unequipped "+str(self.armor[itemObject.slot].itemname)+".")
+            self.armor[itemObject.slot] = itemObject
+            print("You have equipped "+str(itemObject.itemname)+"."+"\n")
+
         # When an item is equipped, it sets that item to the self.equipped attribute, and systematically adds its abilities to the player's combat abilities. If another
         # item is equipped when the player equips an item, it unequips that item first.
 
@@ -211,8 +227,11 @@ class Player:
                 weplist.append(obj)
                 print(str(weplist.index(obj))+": "+str(obj))
         if len(weplist) == 0:
-                print("You have no other weapons."+"\n")
-                self.getattacks()
+            print("You have no other weapons."+"\n")
+            self.getattacks()
+        elif self.canequip == False:
+            print("You cannot equip any weapons (your hand is missing!)"+"\n")
+            self.getattacks()
         else:
             switch = checkInput("Select a weapon to equip: ", type_=int, min_=0, max_=len(weplist)-1)
             self.equipQueue = self.inv[weplist[switch]]
@@ -223,7 +242,7 @@ class Player:
     
         for item in self.abilities:
             if item[1] == True:
-                print(str(self.abilities.index(item))+": "+str(item[0])+": "+str(item[3])+" to "+str(item[4])+" damage. "+str(item[2])+" turns.")
+                print(str(self.abilities.index(item))+": "+str(item[0])+": "+str(int(item[3]*self.stn/6))+" to "+str(int(item[4]*self.stn/6))+" damage. "+str(item[2])+" turns.")
             elif item[1] == False:
                 print(str(self.abilities.index(item))+": "+str(item[0])+": "+str(item[2])+" turns.")
         # Above displays the available abilities, giving numbers to press for each one.
@@ -256,12 +275,24 @@ class Player:
         if self.abilities[self.ability][1]:
             crit = random.randrange(0,100)
             if crit < self.critChance:
-                self.damage = int(self.abilities[self.ability][4]*(self.stn/8))*2
+                self.damage = int(self.abilities[self.ability][4]*(self.stn/6))*2
                 self.critical = True
             else:
-                self.damage = int(random.randrange(self.abilities[self.ability][3], self.abilities[self.ability][4])*(self.stn/10))
+                self.damage = int(random.randrange(self.abilities[self.ability][3], self.abilities[self.ability][4])*(self.stn/6))
             self.world.pdamagedealt = True
                 
+    def takeDamage(self, amount, limb):
+        damagetaken = None
+        if self.armor[self.limbs[limb][4]] != None:
+            damagetaken = int(amount*self.armor[self.limbs[limb][4]].damreduction*self.limbs[limb][2])
+            self.health -= damagetaken
+            self.limbs[limb][1] -= int(damagetaken/self.limbs[limb][2])
+        else:
+            damagetaken = int(amount*self.limbs[limb][2])
+            self.health -= damagetaken
+            self.limbs[limb][1] -= int(damagetaken/self.limbs[limb][2])
+        return damagetaken
+
 
 
     def attack(self):
