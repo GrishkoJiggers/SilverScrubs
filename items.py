@@ -49,7 +49,12 @@ class Consumable(Item):
         self.statnum = statnum
 
 
-
+class Armor(Item):
+    def __init__(self, world, itemname, description, damreduction, slot):
+        Item.__init__(self, world, itemname, description, itemtype="Armor")
+        self.damreduction = damreduction 
+        self.slot = slot
+        # Armor slots are: helmet, body, leggings, gauntlets, and boots.
 
 class Weapon(Item):
     def __init__(self, world, itemname, description, weapontype):
@@ -70,4 +75,4 @@ class Axe(Weapon):
         Weapon.__init__(self, world, itemname, description, weapontype="Axe")
         self.mindam = mindam
         self.maxdam = maxdam
-        self.abilities = [["Slash", True, 3, 22, 28],["Axeblade", True, 3, 25, 26]]
+        self.abilities = [["Slash", True, 3, self.mindam, self.maxdam],["Axeblade", True, 3, self.mindam-2, self.maxdam+4]]
