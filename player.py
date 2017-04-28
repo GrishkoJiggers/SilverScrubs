@@ -199,15 +199,63 @@ class Player:
         print("You have dropped "+str(itemObject.itemname)+".")
         # If you drop an item, it is removed from the player's inventory. If that item is equipped, it is unequipped first.
 
+    def helper(self):
+        while True:
+            helplist = ["Inventory", "Combat", "Stats", "Back"]
+            for item in helplist:
+                print(str(helplist.index(item))+": "+item)
+            whichhelp = checkInput("Choose an option: "+"\n", type_=int, min_=0, max_=len(helplist)-1)
+            if helplist[whichhelp] == "Inventory":
+                while True:
+                    invhelp = ["Weapons", "Armor", "Drops", "Back"]
+                    for item in invhelp:
+                        print(str(invhelp.index(item))+": "+item)
+                    whichinv = checkInput("Choose an option: "+"\n", type_=int, min_=0, max_=len(invhelp)-1)
+                    if invhelp[whichinv] == "Weapons":
+                        print("You can have one weapon equipped at a time. When you equip a weapon, you will be able to use the abilities granted by that item in combat."+"\n")
+                        continue
+                    elif invhelp[whichinv] == "Armor":
+                        print("You can wear armor on your head, body, arms, and legs. Wearing armor decreases the amount of damage you take to that specific part of your body; helmets protect your from head damage, chestplates protect your upper and lower body, gauntlets protect your upper and lower arms, and leggings protect your legs. Beware, enemies can wear armor too. Try to figure out which parts of their bodies are armored to do more damage."+"\n")
+                        continue
+                    elif invhelp[whichinv] == "Drops":
+                        print("Upon killing an enemy, they will drop whatever weapons and armor they have equipped, some money, and if you're lucky, another rare drop."+"\n")
+                        continue
+                    elif invhelp[whichinv] == "Back":
+                        break
+            elif helplist[whichhelp] == "Combat":
+                while True:
+                    combathelp = ["Abilities", "Limbs", "Turns", "Back"]
+                    for item in combathelp:
+                        print(str(combathelp.index(item))+": "+item)
+                    whichcombat = checkInput("Choose an option: "+"\n")
+                    if combathelp[whichcombat] == "Abilities":
+                        print("Abilities can either be obtained by equipping weapons, or by finding specific items throughout the world. Every ability will take a certain amount of turns, so choose your actions wisely."+"\n")
+                        continue
+                    elif combathelp[whichcombat] == "Limbs":
+                        print("Attacking specific limbs will do certain amounts of damage; attacking the head will obviously do more damage than attacking the arms. However, crippling or weakening certain parts of the body can cause effects such as lowered accuracy, agility, or even dropping one's weapon."+"\n")
+                        continue
+                    elif combathelp[whichcombat] == "Turns":
+                        print("Combat is turn-based. Every ability takes a certain amount of turns, and when you choose to use an ability, you must wait the turn cost before the ability is used."+"\n")
+                        continue
+                    elif combathelp[whichcombat] == "Back":
+                        break
+            elif helplist[whichhelp] == "Stats":
+                print("Strength affects one's melee damage in combat, as well as carrying capacity. Agility affects the effectiveness of dodging. Intelligence affects attack accuracy and quality of observation. Luck affects drop chance and critical attack likeliness. Tenacity affects total health, and the health of one's limbs."+"\n")
+                continue
+            elif helplist[whichhelp] == "Back":
+                break
+
     def act(self):
         while True:
-            actions = [[self.inventory, "Inventory"]]
+            actions = [[self.inventory, "Inventory"], [self.helper, "Help"], ["Something", "Travel"]]
             for action in actions:
                 print(str(actions.index(action))+": "+str(action[1]))
             do = checkInput("What will you do? "+"\n", type_=int, min_=0, max_=len(actions)-1)
             actions[do][0]()
             if actions[do][1] == "Travel":
                 break
+            else:
+                continue
  
 
     def dequip(self, itemObject):
