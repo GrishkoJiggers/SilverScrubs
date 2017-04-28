@@ -81,7 +81,7 @@ class Player:
 
         self.limbs = [self.Luparm, self.Ruparm, self.Llowarm, self.Rlowarm, self.head, self.upbody, self.lowbody, self.Rleg, self.Lleg]
         self.targetlimb = None
-        self.coords = [0, 5]
+        self.coords = [5, 0]
         self.proximity = [[0,4], [0,6], [1,4], [1,5],[1,6]]
         self.bearings = []
         
@@ -91,6 +91,85 @@ class Player:
     def stats(self):
         print("Strength: "+str(self.stn)+"\n"+"Agility: "+str(self.agi)+"\n"+"Intelligence: "+str(self.inc)+"\n"+"Luck: "+str(self.luck)+"\n"+"Tenacity: "+str(self.ten))
 
+        def getBearings(self):
+        self.bearings = ["W","SW","S","SE","E","NE","N","NW","Swamp","Colud"]
+        if self.coords[0] == 0:
+            self.bearings.remove("SW")
+            self.bearings.remove("NW")
+            self.bearings.remove("W")
+        if self.coords[0] == 20:
+            self.bearings.remove("SE")
+            self.bearings.remove("NE")
+            self.bearings.remove("E")
+        if self.coords[1] == 0:
+            self.bearings.remove("N")
+            self.bearings.remove("NE")
+            self.bearings.remove("NW")
+        if self.coords[1] == 20:
+            self.bearings.remove("SW")
+            self.bearings.remove("SE")
+            self.bearings.remove('S')
+        if self.coords[0] == 10:
+            self.bearings.remove('NE')
+            self.bearings.remove('SE')
+            self.bearings.remove('E')
+        if self.coords[0] == 11:
+            self.bearings.remove('NW')
+            self.bearings.remove('SW')
+            self.bearings.remove('W')
+        if self.coords[0] != 10:
+            self.bearings.remove('Swamp')
+        if self.coords[0] != 11:
+            self.bearings.remove('Colud')
+        for direction in self.bearings:
+            print(str(self.bearings.index(direction))+": "+ str(direction))
+
+
+    # Every time getBearings() is called, it makes the list of all possible directions, then narrows it down based on where you are. If you're in the last row,
+    # you can still go south, thus progressing to the next region.
+
+    def move(self):
+        self.getBearings()
+        go = checkInput("Choose your bearings: "+"\n", list(range(0,len(self.bearings))), "Invalid direction. Choose a number corresponding to a direction: "+"\n")
+        direction = self.bearings[go]
+        if direction == "W":
+            self.coords[0] -= 1
+        elif direction == "SW":
+            self.coords[1] += 1
+            self.coords[0] -= 1
+        elif direction == "S":
+            self.coords[1] += 1
+        elif direction == "SE":
+            self.coords[0] += 1
+            self.coords[1] += 1
+        elif direction == "E":
+            self.coords[0] += 1
+        elif direction == "NE":
+            self.coords[1] -= 1
+            self.coords[0] += 1
+        elif direction == "N":
+            self.coords[1] -= 1
+        elif direction == "NW":
+            self.coords[0] -= 1
+            self.coords[1] -= 1
+        elif direction == "Swamp":
+            self.nextArea()
+        elif direction == "Colud":
+            self.nextArea()
+
+    def nextArea(self):
+        if self.bearings['Swamp']
+            direct = checkInput("you are about to enter the Swamp, continue?\n" + "1: Yes\n" + "2: No\n", list(range(1,2)), "Not an option. Chose a number to act:\n")
+            if direct == 1:
+                self.coords[0] += 1
+            if direct == 2:
+                self.move()
+        if self.bearings['Colud']
+            direct = checkInput("you are about to enter Colud, continue?\n" + "1: Yes\n" + "2: No\n", list(range(1,2)), "Not an option. Chose a number to act:\n")
+            if direct == 1:
+                self.coords[0] -= 1
+            if direct == 2:
+                self.move()
 
     def pickup(self, itemObject):
         self.inv[itemObject.itemname] = itemObject
