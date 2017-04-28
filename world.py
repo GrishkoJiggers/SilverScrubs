@@ -73,8 +73,11 @@ class World:
         self.edamagedealt = False
         self.currenemy = None
         self.day = 1
+        self.palive = True
        
     def update(self, enemy):
+        # Stand for "player before health" and "enemy before health."
+
         if self.p.abilities[self.p.ability][0] == "Observe":
             if self.p.inc >= 8:
                 print(str(enemy.name)+" is wielding "+str(enemy.equipped.itemname)+".")
@@ -104,25 +107,20 @@ class World:
         # The above conditions are checked in case the player/enemy either dodge a non-damaging ability or dodge when it is not the other's turn to attack.
 
         if self.p.attackturn == self.turn and enemy.attackturn == self.turn and self.edamagedealt and self.pdamagedealt:
-            self.p.health -= self.p.limbs[enemy.targetlimb][2]*enemy.damage
-            self.p.limbs[enemy.targetlimb][1] -= enemy.damage
-            self.p.health = int(self.p.health)
+            pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+            einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
 
-
-            enemy.limbs[self.p.targetlimb][1] -= self.p.damage
-            enemy.health -= enemy.limbs[self.p.targetlimb][2]*self.p.damage
-            enemy.health = int(enemy.health)
             if not self.p.critical and not enemy.critical:
-                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you have used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
+                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you have used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
             
             elif self.p.critical and enemy.critical:
-                print(str(enemy.name)+" has critically struck with "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you critically struck with "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
+                print(str(enemy.name)+" has critically struck with "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you critically struck with "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
             
             elif self.p.critical and not enemy.critical:
-                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you critically struck "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")                
+                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you critically struck "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")                
             
             elif not self.p.critical and enemy.critical:
-                print(str(enemy.name)+" has critically struck with "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
+                print(str(enemy.name)+" has critically struck with "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+", and you used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
             
             self.condition(enemy)
             # These conditions are for when the enemy and player attack at the same time, or "exchange."
@@ -135,15 +133,13 @@ class World:
                 if self.miss(self.p):
                     print("You have missed."+"\n")
                 elif self.p.critical:
-                    print(str(enemy.name)+" failed to dodge your "+str(self.p.abilities[self.p.ability][0])+" and took "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+". A critical hit!"+"\n")
-                    enemy.limbs[self.p.targetlimb][1] -= self.p.damage
-                    enemy.health -= enemy.limbs[self.p.targetlimb][2]*self.p.damage
-                    enemy.health = int(enemy.health)
+                    pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                    einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                    print(str(enemy.name)+" failed to dodge your "+str(self.p.abilities[self.p.ability][0])+" and took "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+". A critical hit!"+"\n")
                 else:
-                    print(str(enemy.name)+" failed to dodge your "+str(self.p.abilities[self.p.ability][0])+" and took "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
-                    enemy.limbs[self.p.targetlimb][1] -= self.p.damage
-                    enemy.health -= enemy.limbs[self.p.targetlimb][2]*self.p.damage
-                    enemy.health = int(enemy.health)
+                    pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                    einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                    print(str(enemy.name)+" failed to dodge your "+str(self.p.abilities[self.p.ability][0])+" and took "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
         # If you attack while the enemy is dodging, there is a chance your attack will miss depending on the enemy's agility (dodge chance). If the attack 
         # still lands, it may crit (luck).
 
@@ -155,12 +151,13 @@ class World:
                 if self.miss(enemy):
                     print(str(enemy.name)+" has missed."+"\n")
                 elif enemy.critical:
-                    print("You failed to dodge the enemy "+str(enemy.abilities[enemy.ability][0])+" and took "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+". A critical hit!"+"\n")
+                    pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                    einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                    print("You failed to dodge the enemy "+str(enemy.abilities[enemy.ability][0])+" and took "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+". A critical hit!"+"\n")
                 else:
-                    print("You failed to dodge the enemy "+str(enemy.abilities[enemy.ability][0])+" and took "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+"."+"\n")
-                self.p.health -= self.p.limbs[enemy.targetlimb][2]*enemy.damage
-                self.p.limbs[enemy.targetlimb][1] -= enemy.damage
-                self.p.health = int(self.p.health)
+                    pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                    einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                    print("You failed to dodge the enemy "+str(enemy.abilities[enemy.ability][0])+" and took "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+"."+"\n")
         # If the enemy is performing a damaging attack while you are in a "dodging state", there is a chance you will evade the attack, which depends on your agility.
         # If the attack lands, there is still a chance the attack will crit.
 
@@ -171,15 +168,13 @@ class World:
             if self.miss(self.p):
                 print("You have missed."+"\n")
             elif self.p.critical:
-                print("You have used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+". A critical hit!"+"\n")
-                enemy.limbs[self.p.targetlimb][1] -= self.p.damage
-                enemy.health -= enemy.limbs[self.p.targetlimb][2]*self.p.damage
-                enemy.health = int(enemy.health)
+                pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)        
+                print("You have used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(einjured)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+". A critical hit!"+"\n")
             else:
+                pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
                 print("You have used "+str(self.p.abilities[self.p.ability][0])+" on "+str(enemy.name)+" for "+str(self.p.damage)+" damage to the "+enemy.limbs[self.p.targetlimb][0]+"."+"\n")
-                enemy.limbs[self.p.targetlimb][1] -= self.p.damage
-                enemy.health -= enemy.limbs[self.p.targetlimb][2]*self.p.damage
-                enemy.health = int(enemy.health)
             self.condition(enemy)
         # Condition for when player attacks, and enemy neither dodges nor attacks.
 
@@ -188,15 +183,13 @@ class World:
             if self.miss(enemy):
                 print(str(enemy.name)+" has missed."+"\n")
             elif enemy.critical:
-                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+". A critical hit!"+"\n")
-                self.p.health -= self.p.limbs[enemy.targetlimb][2]*enemy.damage
-                self.p.limbs[enemy.targetlimb][1] -= enemy.damage
-                self.p.health = int(self.p.health)
+                pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+". A critical hit!"+"\n")
             else:
-                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(enemy.damage)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+"."+"\n")
-                self.p.health -= self.p.limbs[enemy.targetlimb][2]*enemy.damage
-                self.p.limbs[enemy.targetlimb][1] -= enemy.damage
-                self.p.health = int(self.p.health)
+                pinjured = self.p.takeDamage(enemy.damage, enemy.targetlimb)
+                einjured = enemy.takeDamage(self.p.damage, self.p.targetlimb)
+                print(str(enemy.name)+" has used "+str(enemy.abilities[enemy.ability][0])+" for "+str(pinjured)+" damage to the "+str(self.p.limbs[enemy.targetlimb][0])+"."+"\n")
         # Condition for when enemy attacks and player neither dodges nor attacks
     
     def miss(self, entity):
@@ -206,12 +199,107 @@ class World:
 
     def condition(self, entity):
         for limb in entity.limbs:
-            if limb[1]<=0:
-                print(str(entity.name)+" "+limb[0]+" has been severed!"+"\n")
-            elif limb[1]<int((entity.ten/10)*200*0.25):
-                print(str(entity.name)+" "+limb[0]+" crippled."+"\n")
+                     
+            if limb[1]<int((entity.ten/10)*200*0.25):
+                # If a limb's health is a quarter of its max, it is crippled. Less severe than severed, but still bad. At least you keep the limb.
+                if limb[0] == "Head":
+                    if entity == self.p:
+                        print("Your head has been crippled."+"\n")
+                    else:
+                        print(str(entity.name)+" head has been crippled."+"\n")
+                    entity.inc -= 3
+                    if entity.inc <= 1:
+                        entity.inc = 1
+
+                elif limb[0] == "Left upper arm" or "Left lower arm":
+                    if entity == self.p:
+                        print("Your left arm has been crippled."+"\n")
+                    else:
+                        print(str(entity.name)+" left arm has been crippled."+"\n")
+                    entity.stn -= 2
+                    if entity.stn <= 1:
+                        entity.stn = 1
+
+                elif limb[0] == "Right upper arm" or "Right lower arm":
+                    if entity == self.p:
+                        print("Your right arm has been crippled."+"\n")
+                    else:
+                        print(str(entity.name)+" right arm has been crippled."+"\n")
+                    entity.stn -= 2
+                    if entity.stn <= 1:
+                        entity.stn = 1
+
+                elif limb[0] == "Left leg":
+                    if entity == self.p:
+                        print("Your left leg has been crippled."+"\n")
+                    else:
+                        print(str(entity.name)+" left leg has been crippled."+"\n")
+                    entity.agi -= 3
+                    if entity.agi <= 1:
+                        entity.agi = 1
+
+                elif limb[0] == "Right leg":
+                    if entity == self.p:
+                        print("Your right leg has been crippled."+"\n")
+                    else:
+                        print(str(entity.name)+" right leg has been crippled."+"\n")
+                    entity.agi -= 3
+                    if entity.agi <= 1:
+                        entity.agi = 1
+
             elif limb[1]<int((entity.ten/10)*200*0.66):
-                print(str(entity.name)+" "+limb[0]+" weakened."+"\n")
+                if limb[0] == "Head":
+                        if entity == self.p:
+                            print("Your head has been weakened."+"\n")
+                        else:
+                            print(str(entity.name)+" head has been weakened."+"\n")
+                        entity.inc -= 3
+                        if entity.inc <= 1:
+                            entity.inc = 1
+
+                elif limb[0] == "Left upper arm" or "Left lower arm":
+                    if entity == self.p:
+                        print("Your left arm has been weakened."+"\n")
+                    else:
+                        print(str(entity.name)+" left arm has been weakened."+"\n")
+                    entity.stn -= 2
+                    if entity.stn <= 1:
+                        entity.stn = 1
+
+                elif limb[0] == "Right upper arm" or "Right lower arm":
+                    dropchance = random.randrange(0,100)
+                    if dropchance < 50:
+                        if entity == self.p:
+                            print("Your right arm has been weakened, and you have dropped your "+str(self.p.equipped.itemname)+"\n")
+
+                        else:
+                            print(str(entity.name)+" right arm has been crippled, causing "+str(entity.name)+" "+str(entity.equipped.itemname)+" to be dropped.")
+                        entity.drop(entity.equipped)
+                    else:
+                        if entity == self.p:
+                            print("Your right arm has been weakened."+"\n")
+                        else:
+                            print(str(entity.name)+" right arm has been weakened."+"\n")
+                    entity.stn -= 2
+                    
+
+                elif limb[0] == "Left leg":
+                    if entity == self.p:
+                        print("Your left leg has been weakened."+"\n")
+                    else:
+                        print(str(entity.name)+" left leg has been weakened."+"\n")
+                    entity.agi -= 1
+                    if entity.agi <= 1:
+                        entity.agi = 1
+
+                elif limb[0] == "Right leg":
+                    if entity == self.p:
+                        print("Your right leg has been weakened."+"\n")
+                    else:
+                        print(str(entity.name)+" right leg has been weakened."+"\n")
+                    entity.agi -= 1
+                    if entity.agi <= 1:
+                        entity.agi = 1
             
 
     def initiate(self, enemy):
@@ -224,7 +312,7 @@ class World:
         self.fighting = True
         self.turn = 1
         self.currenemy = enemy
-        
+        ealive = True
         while self.fighting:
             print("************************************************************")
             print("TURN "+str(self.turn)+"\n")
@@ -235,11 +323,11 @@ class World:
             print("Player: "+str(self.p.health)+" HP."+"\n")
             print(str(enemy.name)+": "+str(enemy.health)+" HP."+"\n")
             
-            if enemy.health <= 0:
+            if enemy.health <= 0 or ealive == False:
                 print(str(enemy.name)+" has died."+"\n")
                 enemy.loot()
                 break
-            if self.p.health <= 0:
+            if self.p.health <= 0 or self.palive == False:
                 print("You have died."+"\n")
                 break
             
@@ -265,13 +353,19 @@ battleaxe = Axe(w,"Battleaxe", "A heavy and somewhat dull axe, favored by bandit
 hoe = Axe(w,"Rusty hoe", "Definitely not meant to be used as a weapon-- still, it is hard and heavy; a weapon for the desperate.", 5, 10)
 onehit = Sword(w, "Onehitter", "A magical item used only by the person testing the code.", 200, 202)
 
+helmet = Armor(w, "Helmet", "A hard thing that goes on your head.", 0, 0)
+chestplate = Armor(w, "Chestplate", "Something that goes on yer boobies", 0, 1)
+leggings = Armor(w, "Leggings", "Tight fitting pants", 0.0, 2)
+gauntlets = Armor(w, "Gauntlets", "Fits like a glove", 0.0, 3)
+headglove = Armor(w, "Shameless rubber glove", "This definitely belongs somewhere other than the head.", 1, 0)
+
 salve = Consumable(w, "Healing salve", "A medicinal salve made by soaking medicinal ointments and herbs into a bandage. Heals for 30 HP.", "Healing", heal=30)
 luckrock = Consumable(w, "Lucky rock", "Folk tales tell that tossing this rock as far as you can brings good luck. It couldn't hurt to try...", "Stat", stat="Luck", statnum=2)
 serum = Consumable(w, "Serum", "Mystics and druids often peddle snake oils claiming to bring supernatural strength. Though unlikely, these substances were banned in many athletic competitions back home... so perhaps they work after all?", "Stat", stat="Strength", statnum=1)
 
 
 
-starts = [["SCOUT", 3, 6, 6, 7, 4, "Quick and precise, with relatively high critical chance and perception. Starts with a shortsword.", "You are a scout of the Slate Empire. Time and time again, you have watched as the fertile fields and lush forests you scouted were mired with the blood of enemies and allies alike. This time, however, you decide that this war-- your war, is over.", {shortsword.itemname:shortsword, salve.itemname:salve}], ["INFANTRYMAN", 6, 5, 4, 5, 6, "Common foot soldier with generally well-rounded stats. Starts with a battleaxe.", "Freshly drafted from a small farm in the South, you have fought on the front lines enough to be considered a miraculous survivor, as not many survive the front lines. Every battle may be one's last-- and this is not where you die.", {battleaxe.itemname:battleaxe, salve.itemname:salve}], ["OFFICER", 4, 4, 8, 4, 5, "Low-ranking officer. Not particularly skilled, but relatively clever and well-equipped. Starts with a longsword, a dagger, and armor.", "Recruited from a family of poor nobles, you have been hastily trained to command troops on the battlefield, despite having no experience in combat. It did not take long, however, for your appetite for war to be sated-- shortly after your first foray into the Ashen Wood, you have seen enough. You decide that you'd rather live in shame than die like so many of your subordinates.", {longsword.itemname:longsword, salve.itemname:salve, luckrock.itemname:luckrock}]]
+starts = [["SCOUT", 3, 6, 6, 7, 4, "Quick and precise, with relatively high critical chance and perception. Starts with a shortsword.", "You are a scout of the Slate Empire. Time and time again, you have watched as the fertile fields and lush forests you scouted were mired with the blood of enemies and allies alike. This time, however, you decide that this war-- your war, is over.", {shortsword.itemname:shortsword, salve.itemname:salve}], ["INFANTRYMAN", 6, 5, 4, 5, 6, "Common foot soldier with generally well-rounded stats. Starts with a battleaxe.", "Freshly drafted from a small farm in the South, you have fought on the front lines enough to be considered a miraculous survivor, as not many survive the front lines. Every battle may be one's last-- and this is not where you die.", {battleaxe.itemname:battleaxe, salve.itemname:salve}], ["OFFICER", 4, 4, 8, 4, 5, "Low-ranking officer. Not particularly skilled, but relatively clever and well-equipped. Starts with a longsword, a dagger, and armor.", "Recruited from a family of poor nobles, you have been hastily trained to command troops on the battlefield, despite having no experience in combat. It did not take long, however, for your appetite for war to be sated-- shortly after your first foray into the Ashen Wood, you have seen enough. You decide that you'd rather live in shame than die like so many of your subordinates.", {longsword.itemname:longsword, salve.itemname:salve, luckrock.itemname:luckrock, helmet.itemname:helmet, chestplate.itemname:chestplate, leggings.itemname:leggings, gauntlets.itemname:gauntlets}]]
 
 w.p = createChar()
 
